@@ -1,0 +1,6 @@
+c:\users\pavel\documents\visual studio 2015\Projects\NumberGuessingServer\NumberGuessingServer\bin\Debug\NumberGuessingServer.exe.config
+c:\users\pavel\documents\visual studio 2015\Projects\NumberGuessingServer\NumberGuessingServer\bin\Debug\NumberGuessingServer.exe
+c:\users\pavel\documents\visual studio 2015\Projects\NumberGuessingServer\NumberGuessingServer\bin\Debug\NumberGuessingServer.pdb
+c:\users\pavel\documents\visual studio 2015\Projects\NumberGuessingServer\NumberGuessingServer\obj\Debug\NumberGuessingServer.csprojResolveAssemblyReference.cache
+c:\users\pavel\documents\visual studio 2015\Projects\NumberGuessingServer\NumberGuessingServer\obj\Debug\NumberGuessingServer.exe
+c:\users\pavel\documents\visual studio 2015\Projects\NumberGuessingServer\NumberGuessingServer\obj\Debug\NumberGuessingServer.pdb
