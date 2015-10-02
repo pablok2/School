@@ -1,0 +1,6 @@
+c:\users\pavel\documents\visual studio 2015\Projects\HTTPServerImplementation\HTTPServerImplementation\bin\Debug\HTTPServerImplementation.exe.config
+c:\users\pavel\documents\visual studio 2015\Projects\HTTPServerImplementation\HTTPServerImplementation\bin\Debug\HTTPServerImplementation.exe
+c:\users\pavel\documents\visual studio 2015\Projects\HTTPServerImplementation\HTTPServerImplementation\bin\Debug\HTTPServerImplementation.pdb
+c:\users\pavel\documents\visual studio 2015\Projects\HTTPServerImplementation\HTTPServerImplementation\obj\Debug\HTTPServerImplementation.csprojResolveAssemblyReference.cache
+c:\users\pavel\documents\visual studio 2015\Projects\HTTPServerImplementation\HTTPServerImplementation\obj\Debug\HTTPServerImplementation.exe
+c:\users\pavel\documents\visual studio 2015\Projects\HTTPServerImplementation\HTTPServerImplementation\obj\Debug\HTTPServerImplementation.pdb
