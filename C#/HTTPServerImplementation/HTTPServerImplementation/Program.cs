@@ -6,6 +6,7 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using System.Net.Sockets;
+using System.Threading;
 
 namespace HTTPServerImplementation
 {
@@ -19,50 +20,11 @@ namespace HTTPServerImplementation
 
             while (true)
             {
-                Socket socket = listeningSocket.Accept();
+                WebRequest newWebRequest = new WebRequest(listeningSocket.Accept());
+                newWebRequest.RootDirectory = @"C:\Users\Pavel\Documents\test2";
 
-                byte[] rec = new byte[1024];
-                socket.Receive(rec);
-
-                string incoming = Encoding.UTF8.GetString(rec);
-                Console.WriteLine(incoming);
-
-                SendResponse(socket);
-                socket.Close();
-            }
-        }
-
-        private static void SendResponse(Socket socket)
-        {
-            // Create a response
-            DateTime utc = DateTime.UtcNow;
-
-            string html = "<html>" +
-                "<head>" +
-                "<title>" +
-                "Pablo" +
-                "</title>" +
-                "</head>" +
-                "<body bgcolor = \"FF00FF\">" +
-                "</body>" +
-                 "</html>";
-
-            string response = "HTTP/ 1.1 200 OK\r\n" +
-                string.Format("Date: {0}\r\n", utc.ToString("R")) +
-                "Server: localhostServer/2.1\r\n" +
-                "Content-Type: text/html\r\n" +
-                string.Format("Content-Length: {0}\r\n\r\n", html.Length) +
-                html;
-
-            byte[] toSend = Encoding.UTF8.GetBytes(response);
-
-            if (socket.Send(toSend, toSend.Length, 0) == -1)
-            {
-                Console.WriteLine("Transmission failed.");
-            }
-            else
-            {
-                Console.WriteLine("Succeeded transmission.");
+                Thread thread = new Thread(() => newWebRequest.StartProcessing());
+                thread.Start();
             }
         }
     }
