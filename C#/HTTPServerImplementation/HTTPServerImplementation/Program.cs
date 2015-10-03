@@ -20,8 +20,10 @@ namespace HTTPServerImplementation
 
             while (true)
             {
-                WebRequest newWebRequest = new WebRequest(listeningSocket.Accept());
-                newWebRequest.RootDirectory = @"C:\Users\Pavel\Documents\test2";
+                WebRequest newWebRequest = new WebRequest(listeningSocket.Accept())
+                {
+                    RootDirectory = @"C:\Users\Pavel\Documents\test2"
+                };
 
                 Thread thread = new Thread(() => newWebRequest.StartProcessing());
                 thread.Start();

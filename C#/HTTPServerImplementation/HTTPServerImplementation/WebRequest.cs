@@ -13,7 +13,7 @@ namespace HTTPServerImplementation
         private Socket _socket;
         private StreamReader _stream;
         private RequestParams _requestParams;
-        private string _rootDirectory;
+        private string _rootDirectory = string.Empty;
 
         public string RootDirectory
         {
@@ -23,10 +23,6 @@ namespace HTTPServerImplementation
                 if (Directory.Exists(value))
                 {
                     _rootDirectory = value.EndsWith(@"\") ? value : value + @"\";
-                }
-                else
-                {
-                    _rootDirectory = string.Empty;
                 }
             }
         }
@@ -47,8 +43,8 @@ namespace HTTPServerImplementation
         private void GetRequest()
         {
             _requestParams.IsValid = (_stream != null && !_stream.EndOfStream);
-            
-            bool parse = true;
+
+            bool parse = _requestParams.IsValid;
             while (parse)
             {
                 parse = ParseRequest(_stream.ReadLine());
@@ -60,13 +56,14 @@ namespace HTTPServerImplementation
             // Create a response
             DateTime utc = DateTime.UtcNow;
             string response;
+            byte[] buffer = new byte[0];
 
             if (_requestParams.IsValid)
             {
                 string windowsPath;
 
                 // Initial request state
-                if (_requestParams.ServerDirectory.Equals("/"))
+                if (_requestParams.ServerDirectory.EndsWith("/"))
                 {
                     windowsPath = "index.html";
                 }
@@ -112,12 +109,16 @@ namespace HTTPServerImplementation
                         {
                             StreamReader sr = new StreamReader(fileReader);
                             string fileContents = sr.ReadToEnd();
-
                             response = response + $"Content-Length: {fileContents.Length}\r\n\r\n" + fileContents;
                         }
                         else
                         {
-                            
+                            long fileLength = new FileInfo(fullPath).Length;
+                            BinaryReader br = new BinaryReader(fileReader);
+                            buffer = br.ReadBytes((int)fileLength);
+                            fileReader.Close();
+
+                            response = response + $"Content-Length: {buffer.Length}\r\n\r\n";
                         }
                     }
                 }
@@ -131,11 +132,25 @@ namespace HTTPServerImplementation
             {
                 //Send 400 fail request
                 response = "HTTP/ 1.1 400 OK\r\n" +
-                    string.Format("Date: {0}\r\n", utc.ToString("R")) +
-                    "Server: localhostServer/2.1\r\n";
+                           $"Date: {utc.ToString("R")}\r\n" +
+                           "Server: localhostServer/2.1\r\n";
             }
 
-            byte[] sendBytes = Encoding.UTF8.GetBytes(response);
+            byte[] sendBytes;
+            if (_requestParams.IsValid &&
+                (_requestParams.MimeType == MIMEType.JPEG || _requestParams.MimeType == MIMEType.MP3))
+            {
+                byte[] header = Encoding.UTF8.GetBytes(response);
+                sendBytes = new byte[header.Length + buffer.Length];
+                Array.Copy(header, sendBytes, header.Length);
+                Array.Copy(buffer, 0, sendBytes, header.Length, buffer.Length);
+            }
+            else
+            {
+                sendBytes = Encoding.UTF8.GetBytes(response);
+            }
+
+            //sendBytes = Encoding.UTF8.GetBytes(response);
             _socket.Send(sendBytes);
         }
 
@@ -158,7 +173,7 @@ namespace HTTPServerImplementation
                     _requestParams.IsValid = true;
                     _requestParams.ServerDirectory = getParams[1];
 
-                    if (getParams[1].Equals("/"))
+                    if (getParams[1].EndsWith("/"))
                     {
                         // Initial index request
                         _requestParams.MimeType = MIMEType.HTML;
@@ -171,7 +186,7 @@ namespace HTTPServerImplementation
                         {
                             type = MIMEType.HTML;
                         }
-                        else if (getParams[1].EndsWith(".jpeg") || getParams[1].EndsWith(".jpg"))
+                        else if (getParams[1].EndsWith(".jpeg") || getParams[1].EndsWith(".jpg") || getParams[1].EndsWith("jpe"))
                         {
                             type = MIMEType.JPEG;
                         }
