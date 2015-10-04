@@ -14,6 +14,7 @@ namespace HTTPServerImplementation
         private StreamReader _stream;
         private RequestParams _requestParams;
         private string _rootDirectory = string.Empty;
+        private List<string> _mimeTypeList; 
 
         public string RootDirectory
         {
@@ -32,6 +33,11 @@ namespace HTTPServerImplementation
             _socket = socket;
             _stream = new StreamReader(new NetworkStream(_socket));
             _requestParams = new RequestParams();
+            _mimeTypeList = new List<string>()
+            {
+                ".html", ".htm", ".txt", ".mpeg", ".mpg", ".mpe", ".avi", ".png", "jpeg", ".jpg", ".jpe", ".gif", ".wav",
+                ".mp3", ".mpga", ".mp2", "aif", ".aiff", ".aifc"
+            };
         }
 
         public void StartProcessing()
@@ -53,105 +59,95 @@ namespace HTTPServerImplementation
 
         private void SendResponse()
         {
-            // Create a response
-            DateTime utc = DateTime.UtcNow;
+            // Response variables
             string response;
-            byte[] buffer = new byte[0];
+            byte[] fileBytes = new byte[0];
+            byte[] sendBytes;
 
-            if (_requestParams.IsValid)
+            if (!_requestParams.IsValid)
             {
-                string windowsPath;
+                // Send 400 bad redquest
+                response = _requestParams.Header(StatusCodeType.BadRequest);
 
-                // Initial request state
-                if (_requestParams.ServerDirectory.EndsWith("/"))
+                sendBytes = Encoding.UTF8.GetBytes(response);
+                _socket.Send(sendBytes);
+
+                return;
+            }
+            
+            // Local file
+            string windowsPath;
+
+            // Initial request state
+            if (_requestParams.ServerDirectory.EndsWith("/"))
+            {
+                windowsPath = "index.html";
+            }
+            else
+            {
+                // Remove leading / and replace the remaining / to line up
+                // with Windows.
+                windowsPath = _requestParams.ServerDirectory.Remove(0, 1).Replace("/", @"\");
+            }
+
+            _requestParams.FullFilePath = Path.Combine(_rootDirectory, windowsPath);
+
+            if (File.Exists(_requestParams.FullFilePath))
+            {
+                try
                 {
-                    windowsPath = "index.html";
-                }
-                else
-                {
-                    windowsPath = _requestParams.ServerDirectory.Remove(0, 1).Replace("/", @"\");
-                }
-
-                string fullPath = Path.Combine(_rootDirectory, windowsPath);
-
-                if (File.Exists(fullPath))
-                {
-                    // Get the MIME content type
-                    string contentType;
-
-                    switch (_requestParams.MimeType)
-                    {
-                        case MIMEType.HTML:
-                            contentType = "text/html";
-                            break;
-                        case MIMEType.JPEG:
-                            contentType = "image/jpeg";
-                            break;
-                        case MIMEType.MP3:
-                            contentType = "audio/mpeg";
-                            break;
-                        case MIMEType.PLAIN:
-                            contentType = "text/plain";
-                            break;
-                        default:
-                            throw new ArgumentOutOfRangeException();
-                    }
-
                     // Read the file stream
-                    using (FileStream fileReader = File.OpenRead(fullPath))
+                    using (FileStream fileReader = File.OpenRead(_requestParams.FullFilePath))
                     {
-                        response = "HTTP/ 1.1 200 OK\r\n" +
-                                   $"Date: {utc.ToString("R")}\r\n" +
-                                   "Server: localhostServer/2.1\r\n" +
-                                   $"Content-Type: {contentType}\r\n";
+                        response = _requestParams.Header(StatusCodeType.OK) +
+                                   _requestParams.ContentType();
 
                         if (_requestParams.MimeType == MIMEType.HTML || _requestParams.MimeType == MIMEType.PLAIN)
                         {
                             StreamReader sr = new StreamReader(fileReader);
                             string fileContents = sr.ReadToEnd();
-                            response = response + $"Content-Length: {fileContents.Length}\r\n\r\n" + fileContents;
+                            response += _requestParams.ContentLength(fileContents.Length)
+                                + "\r\n" + fileContents;
                         }
                         else
                         {
-                            long fileLength = new FileInfo(fullPath).Length;
+                            FileInfo fi = new FileInfo(_requestParams.FullFilePath);
                             BinaryReader br = new BinaryReader(fileReader);
-                            buffer = br.ReadBytes((int)fileLength);
+                            fileBytes = br.ReadBytes((int)fi.Length);
                             fileReader.Close();
 
-                            response = response + $"Content-Length: {buffer.Length}\r\n\r\n";
+                            response += _requestParams.ContentLength(fileBytes.Length) + "\r\n";
                         }
                     }
                 }
-                else
+                catch (Exception)
                 {
-                    // Respond with the stuff needed for a failed get file repsonse code
-                    response = string.Empty;
+                    // Send 500 internal server error
+                    response = _requestParams.Header(StatusCodeType.InternalServerError);
                 }
             }
             else
             {
-                //Send 400 fail request
-                response = "HTTP/ 1.1 400 OK\r\n" +
-                           $"Date: {utc.ToString("R")}\r\n" +
-                           "Server: localhostServer/2.1\r\n";
+                // Send 400 bad request
+                response = _requestParams.Header(StatusCodeType.BadRequest);
             }
-
-            byte[] sendBytes;
+            
             if (_requestParams.IsValid &&
-                (_requestParams.MimeType == MIMEType.JPEG || _requestParams.MimeType == MIMEType.MP3))
+                _requestParams.MimeType == MIMEType.JPEG)
             {
+                // Send inline file
                 byte[] header = Encoding.UTF8.GetBytes(response);
-                sendBytes = new byte[header.Length + buffer.Length];
+                sendBytes = new byte[header.Length + fileBytes.Length];
                 Array.Copy(header, sendBytes, header.Length);
-                Array.Copy(buffer, 0, sendBytes, header.Length, buffer.Length);
+                Array.Copy(fileBytes, 0, sendBytes, header.Length, fileBytes.Length);
             }
             else
             {
                 sendBytes = Encoding.UTF8.GetBytes(response);
             }
 
-            //sendBytes = Encoding.UTF8.GetBytes(response);
             _socket.Send(sendBytes);
+            
         }
 
         private bool ParseRequest(string line)
@@ -168,46 +164,62 @@ namespace HTTPServerImplementation
             {
                 string[] getParams = line.Split(' ');
 
-                if (getParams.Length == 3)
+                if (getParams.Length != 3)
                 {
-                    _requestParams.IsValid = true;
-                    _requestParams.ServerDirectory = getParams[1];
+                    return _requestParams.IsValid = false;
+                }
 
-                    if (getParams[1].EndsWith("/"))
+                _requestParams.IsValid = true;
+
+                string fileOrDir = getParams[1];
+                if (fileOrDir.EndsWith("/"))
+                {
+                    // Initial index request
+                    _requestParams.MimeType = MIMEType.HTML;
+                }
+                else if (fileOrDir.Contains("."))
+                {
+                    string extension = fileOrDir.Substring(fileOrDir.LastIndexOf("."));
+
+                    if (_mimeTypeList.Contains(extension))
                     {
-                        // Initial index request
-                        _requestParams.MimeType = MIMEType.HTML;
-                    }
-                    else
-                    {
+                        // Get response file type
                         MIMEType type = MIMEType.PLAIN; // Default case
 
-                        if (getParams[1].EndsWith(".html") || getParams[1].EndsWith(".htm"))
+                        if (extension.Equals(".html") || extension.Equals(".htm"))
                         {
                             type = MIMEType.HTML;
                         }
-                        else if (getParams[1].EndsWith(".jpeg") || getParams[1].EndsWith(".jpg") || getParams[1].EndsWith("jpe"))
+                        else if (extension.Equals(".jpeg") || extension.Equals(".jpg") || extension.Equals("jpe"))
                         {
                             type = MIMEType.JPEG;
                         }
-                        else if (getParams[1].EndsWith(".txt"))
+                        else if (extension.Equals(".txt"))
                         {
                             type = MIMEType.PLAIN;
                         }
-                        else if (getParams[1].EndsWith(".mp3"))
+                        else if (extension.Equals(".mp3"))
                         {
                             type = MIMEType.MP3;
                         }
 
                         _requestParams.MimeType = type;
                     }
-
-                    _requestParams.HTTP11 = getParams[2] == "HTTP/1.1";
+                    else
+                    {
+                        // Incompatible file type
+                        _requestParams.IsValid = false;
+                    }
                 }
                 else
                 {
-                    _requestParams.IsValid = false;
+                    // This is a directory
+                    fileOrDir = fileOrDir + "/";
+                    _requestParams.MimeType = MIMEType.HTML;
                 }
+
+                _requestParams.ServerDirectory = fileOrDir;
+                _requestParams.HTTP11 = getParams[2] == "HTTP/1.1";
             }
 
             return true;
