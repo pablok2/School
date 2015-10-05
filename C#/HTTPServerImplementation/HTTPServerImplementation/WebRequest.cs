@@ -48,47 +48,54 @@ namespace HTTPServerImplementation
 
         private void GetRequest()
         {
-            _requestParams.IsValid = (_stream != null && !_stream.EndOfStream);
-
-            bool parse = _requestParams.IsValid;
-            while (parse)
+            try
             {
-                parse = ParseRequest(_stream.ReadLine());
+                _requestParams.IsValid = (_stream != null && !_stream.EndOfStream);
+
+                bool parse = _requestParams.IsValid;
+                while (parse)
+                {
+                    parse = ParseRequest(_stream.ReadLine());
+                }
+            }
+            catch (Exception)
+            {
+                _requestParams.IsValid = false;
             }
         }
 
         private void SendResponse()
         {
             // Response variables
-            string response;
+            string response = string.Empty;
             byte[] fileBytes = new byte[0];
             byte[] sendBytes;
 
             if (!_requestParams.IsValid)
             {
                 // Send 400 bad redquest
-                response = _requestParams.Header(StatusCodeType.BadRequest);
+                _requestParams.StatusCode = StatusCodeType.BadRequest;
+                response = _requestParams.HeaderToString();
 
                 sendBytes = Encoding.UTF8.GetBytes(response);
                 _socket.Send(sendBytes);
 
                 return;
             }
-            
+
             // Local file
-            string windowsPath;
+            // Remove leading / and replace the remaining / to line up
+            // with Windows.
+            string windowsPath = _requestParams.ServerDirectory.Replace("/", @"\");
 
             // Initial request state
-            if (_requestParams.ServerDirectory.EndsWith("/"))
+            if (windowsPath.EndsWith(@"\"))
             {
-                windowsPath = "index.html";
+                windowsPath += "index.html";
             }
-            else
-            {
-                // Remove leading / and replace the remaining / to line up
-                // with Windows.
-                windowsPath = _requestParams.ServerDirectory.Remove(0, 1).Replace("/", @"\");
-            }
+
+            // Remove the first slash to later append to root dir
+            windowsPath = windowsPath.Remove(0, 1);
 
             _requestParams.FullFilePath = Path.Combine(_rootDirectory, windowsPath);
 
@@ -96,40 +103,22 @@ namespace HTTPServerImplementation
             {
                 try
                 {
-                    // Read the file stream
-                    using (FileStream fileReader = File.OpenRead(_requestParams.FullFilePath))
-                    {
-                        response = _requestParams.Header(StatusCodeType.OK) +
-                                   _requestParams.ContentType();
-
-                        if (_requestParams.MimeType == MIMEType.HTML || _requestParams.MimeType == MIMEType.PLAIN)
-                        {
-                            StreamReader sr = new StreamReader(fileReader);
-                            string fileContents = sr.ReadToEnd();
-                            response += _requestParams.ContentLength(fileContents.Length)
-                                + "\r\n" + fileContents;
-                        }
-                        else
-                        {
-                            FileInfo fi = new FileInfo(_requestParams.FullFilePath);
-                            BinaryReader br = new BinaryReader(fileReader);
-                            fileBytes = br.ReadBytes((int)fi.Length);
-                            fileReader.Close();
-
-                            response += _requestParams.ContentLength(fileBytes.Length) + "\r\n";
-                        }
-                    }
+                    ReadFileStream(ref response, ref fileBytes);
                 }
                 catch (Exception)
                 {
                     // Send 500 internal server error
-                    response = _requestParams.Header(StatusCodeType.InternalServerError);
+                    _requestParams.StatusCode = StatusCodeType.InternalServerError;
+                    response = _requestParams.HeaderToString();
+                    _requestParams.IsValid = false;
                 }
             }
             else
             {
                 // Send 400 bad request
-                response = _requestParams.Header(StatusCodeType.BadRequest);
+                _requestParams.StatusCode = StatusCodeType.BadRequest;
+                response = _requestParams.HeaderToString();
+                _requestParams.IsValid = false;
             }
             
             if (_requestParams.IsValid &&
@@ -223,6 +212,33 @@ namespace HTTPServerImplementation
             }
 
             return true;
+        }
+
+        private void ReadFileStream(ref string response, ref byte[] fileBuffer)
+        {
+            // Read the file stream
+            using (FileStream fileReader = File.OpenRead(_requestParams.FullFilePath))
+            {
+                response = _requestParams.HeaderToString() +
+                           _requestParams.ContentTypeToString();
+
+                if (_requestParams.MimeType == MIMEType.HTML || _requestParams.MimeType == MIMEType.PLAIN)
+                {
+                    StreamReader sr = new StreamReader(fileReader);
+                    string fileContents = sr.ReadToEnd();
+                    response += _requestParams.ContentLengthToString(fileContents.Length)
+                        + "\r\n" + fileContents;
+                }
+                else
+                {
+                    FileInfo fi = new FileInfo(_requestParams.FullFilePath);
+                    BinaryReader br = new BinaryReader(fileReader);
+                    fileBuffer = br.ReadBytes((int)fi.Length);
+                    fileReader.Close();
+
+                    response += _requestParams.ContentLengthToString(fileBuffer.Length) + "\r\n";
+                }
+            }
         }
     }
 }

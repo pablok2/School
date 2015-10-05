@@ -3,7 +3,7 @@
     /// <summary>
     /// MIME Types enum
     /// </summary>
-    public enum MIMEType
+    internal enum MIMEType
     {
         HTML,
         JPEG,

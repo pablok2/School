@@ -1,6 +1,6 @@
 ﻿namespace HTTPServerImplementation
 {
-    public enum StatusCodeType
+    internal enum StatusCodeType
     {
         OK = 200,
         BadRequest = 400,

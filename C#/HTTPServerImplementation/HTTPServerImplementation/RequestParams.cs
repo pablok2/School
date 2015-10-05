@@ -8,12 +8,13 @@ namespace HTTPServerImplementation
         public bool HTTP11 { get; set; } = false;
 
         public MIMEType MimeType { get; set; } = MIMEType.PLAIN;
+        public StatusCodeType StatusCode { get; set; } = StatusCodeType.OK;
 
         public string ServerDirectory { get; set; }
         public string FullFilePath { get; set; }
         public string UTC { get; set; } = DateTime.UtcNow.ToString("R");
 
-        public string ContentType()
+        public string ContentTypeToString()
         {
             string contentType;
 
@@ -39,16 +40,16 @@ namespace HTTPServerImplementation
             return $"Content-Type: {contentType}\r\n";
         }
 
-        public string ContentLength(int length)
+        public string ContentLengthToString(int length)
         {
             return $"Content-Length: {length}\r\n";
         }
 
-        private string StatusCode(StatusCodeType code)
+        private string StatusCodeToString()
         {
             string status;
 
-            switch (code)
+            switch (StatusCode)
             {
                 case StatusCodeType.OK:
                     status = "HTTP/ 1.1 200 OK\r\n";
@@ -67,9 +68,9 @@ namespace HTTPServerImplementation
             return status;
         }
 
-        public string Header(StatusCodeType code)
+        public string HeaderToString()
         {
-            return StatusCode(code) +
+            return StatusCodeToString() +
                 $"Date: {UTC}\r\n" +
                 $"Server: {Environment.MachineName}/2.1\r\n";
         }
