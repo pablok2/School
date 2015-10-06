@@ -1,0 +1,9 @@
+C:\Users\Pavel\Documents\Visual Studio 2015\Projects\HTTPServerService\HTTPServerService\bin\Release\HTTPServerService.exe.config
+C:\Users\Pavel\Documents\Visual Studio 2015\Projects\HTTPServerService\HTTPServerService\bin\Release\HTTPServerService.exe
+C:\Users\Pavel\Documents\Visual Studio 2015\Projects\HTTPServerService\HTTPServerService\bin\Release\HTTPServerService.pdb
+C:\Users\Pavel\Documents\Visual Studio 2015\Projects\HTTPServerService\HTTPServerService\obj\Release\HTTPServerService.csprojResolveAssemblyReference.cache
+C:\Users\Pavel\Documents\Visual Studio 2015\Projects\HTTPServerService\HTTPServerService\obj\Release\HTTPServerService.ProjectInstaller.resources
+C:\Users\Pavel\Documents\Visual Studio 2015\Projects\HTTPServerService\HTTPServerService\obj\Release\HTTPServerService.csproj.GenerateResource.Cache
+C:\Users\Pavel\Documents\Visual Studio 2015\Projects\HTTPServerService\HTTPServerService\obj\Release\HTTPServerService.exe
+C:\Users\Pavel\Documents\Visual Studio 2015\Projects\HTTPServerService\HTTPServerService\obj\Release\HTTPServerService.pdb
+C:\Users\Pavel\Documents\Visual Studio 2015\Projects\HTTPServerService\HTTPServerService\obj\Release\HTTPServerService.HTTPService.resources
